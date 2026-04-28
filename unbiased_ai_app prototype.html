@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Unbiased AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0b0d14;
+    --surface:   #13161f;
+    --surface2:  #1b1f2e;
+    --surface3:  #222739;
+    --border:    rgba(255,255,255,0.07);
+    --border2:   rgba(255,255,255,0.12);
+    --accent:    #7c5cfc;
+    --accent2:   #a78bfa;
+    --accent-glow: rgba(124,92,252,0.25);
+    --green:     #22d3a5;
+    --green-bg:  rgba(34,211,165,0.12);
+    --amber:     #f59e0b;
+    --amber-bg:  rgba(245,158,11,0.12);
+    --red:       #f43f5e;
+    --red-bg:    rgba(244,63,94,0.12);
+    --text1:     #f0f2ff;
+    --text2:     #8b92b8;
+    --text3:     #555d80;
+    --font:      'Sora', sans-serif;
+    --mono:      'JetBrains Mono', monospace;
+    --r-sm:      8px;
+    --r-md:      12px;
+    --r-lg:      16px;
+    --r-xl:      22px;
+    --r-2xl:     28px;
+  }
+
+  body {
+    font-family: var(--font);
+    background: #060810;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    padding: 24px 12px 48px;
+  }
+
+  /* ── APP SHELL ── */
+  .app {
+    width: 390px;
+    min-height: 844px;
+    background: var(--bg);
+    border: 1px solid var(--border2);
+    border-radius: var(--r-2xl);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    box-shadow: 0 40px 120px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04) inset;
+  }
+
+  /* Ambient top glow */
+  .app::before {
+    content: '';
+    position: absolute;
+    top: -60px; left: 50%; transform: translateX(-50%);
+    width: 280px; height: 120px;
+    background: radial-gradient(ellipse, rgba(124,92,252,0.3) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .screen { display: none; flex-direction: column; flex: 1; position: relative; z-index: 1; }
+  .screen.active { display: flex; animation: slideUp 0.28s cubic-bezier(0.22,1,0.36,1); }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+  /* ── TOPBAR ── */
+  .topbar {
+    padding: 18px 20px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    backdrop-filter: blur(12px);
+    background: rgba(11,13,20,0.8);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .topbar-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text1);
+    letter-spacing: -0.2px;
+  }
+  .topbar-action {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--accent2);
+    cursor: pointer;
+    letter-spacing: 0.2px;
+  }
+
+  /* Logo */
+  .logo-wrap { display: flex; align-items: center; gap: 10px; }
+  .logo-icon {
+    width: 30px; height: 30px;
+    background: linear-gradient(135deg, var(--accent), #a78bfa);
+    border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 16px var(--accent-glow);
+  }
+  .logo-icon svg { width: 16px; height: 16px; }
+  .logo-name { font-size: 15px; font-weight: 700; color: var(--text1); letter-spacing: -0.4px; }
+
+  /* Avatar */
+  .avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), #a78bfa);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 600; color: white;
+    box-shadow: 0 0 0 2px var(--accent-glow);
+  }
+
+  /* ── SCROLLABLE CONTENT ── */
+  .content { flex: 1; overflow-y: auto; padding: 20px; scrollbar-width: none; }
+  .content::-webkit-scrollbar { display: none; }
+
+  /* ── BOTTOM NAV ── */
+  .bottomnav {
+    border-top: 1px solid var(--border);
+    display: flex;
+    padding: 10px 4px 16px;
+    background: rgba(11,13,20,0.95);
+    backdrop-filter: blur(12px);
+  }
+  .nav-item {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+    cursor: pointer; padding: 6px 4px; border: none; background: none;
+    color: var(--text3); font-size: 10px; font-weight: 500;
+    font-family: var(--font); transition: color 0.2s; letter-spacing: 0.2px;
+    border-radius: var(--r-sm);
+  }
+  .nav-item svg { width: 20px; height: 20px; transition: transform 0.2s; }
+  .nav-item:hover { color: var(--text2); }
+  .nav-item.active { color: var(--accent2); }
+  .nav-item.active svg { transform: scale(1.1); }
+
+  /* ── BUTTONS ── */
+  .btn-primary {
+    width: 100%; padding: 14px;
+    background: linear-gradient(135deg, var(--accent), #9d7fff);
+    color: white; border: none;
+    border-radius: var(--r-lg);
+    font-size: 14px; font-weight: 600; font-family: var(--font);
+    cursor: pointer; transition: opacity 0.2s, transform 0.15s;
+    box-shadow: 0 4px 20px var(--accent-glow);
+    letter-spacing: -0.1px;
+  }
+  .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); opacity: 1; }
+  .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+  .btn-secondary {
+    width: 100%; padding: 13px;
+    background: var(--surface2); color: var(--text2);
+    border: 1px solid var(--border2);
+    border-radius: var(--r-lg);
+    font-size: 14px; font-weight: 500; font-family: var(--font);
+    cursor: pointer; transition: background 0.2s, border-color 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    margin-top: 10px;
+  }
+  .btn-secondary:hover { background: var(--surface3); border-color: var(--border2); color: var(--text1); }
+
+  /* ── INPUTS ── */
+  .input-group { margin-bottom: 14px; }
+  .input-group label {
+    display: block; font-size: 11px; font-weight: 600;
+    color: var(--text3); margin-bottom: 7px;
+    letter-spacing: 0.6px; text-transform: uppercase;
+  }
+  .input-group input,
+  .input-group textarea,
+  .input-group select {
+    width: 100%; padding: 12px 14px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    font-size: 14px; color: var(--text1);
+    font-family: var(--font);
+    outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+    appearance: none;
+  }
+  .input-group input::placeholder,
+  .input-group textarea::placeholder { color: var(--text3); }
+  .input-group input:focus,
+  .input-group textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+    background: var(--surface3);
+  }
+  .input-group textarea { resize: vertical; min-height: 90px; line-height: 1.6; }
+  .input-group select { color: var(--text2); cursor: pointer; }
+  .input-group select option { background: var(--surface); }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: 16px;
+    margin-bottom: 12px;
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: var(--border2); }
+
+  /* ── SECTION TITLE ── */
+  .section-title {
+    font-size: 10px; font-weight: 700;
+    color: var(--text3); letter-spacing: 1px;
+    text-transform: uppercase; margin-bottom: 12px;
+    margin-top: 4px;
+  }
+
+  /* ── METRICS ── */
+  .metric-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .metric-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: 14px;
+    transition: border-color 0.2s;
+  }
+  .metric-card:hover { border-color: rgba(124,92,252,0.3); }
+  .metric-label { font-size: 10px; font-weight: 700; color: var(--text3); letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 6px; }
+  .metric-value { font-size: 28px; font-weight: 700; color: var(--text1); line-height: 1; letter-spacing: -1px; }
+  .metric-sub { font-size: 11px; color: var(--text3); margin-top: 4px; }
+
+  /* ── BADGES ── */
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.2px;
+  }
+  .badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; }
+  .badge-low { background: var(--green-bg); color: var(--green); }
+  .badge-low::before { background: var(--green); }
+  .badge-med { background: var(--amber-bg); color: var(--amber); }
+  .badge-med::before { background: var(--amber); }
+  .badge-high { background: var(--red-bg); color: var(--red); }
+  .badge-high::before { background: var(--red); }
+
+  /* ── BIAS BARS ── */
+  .bias-bar-wrap { margin-bottom: 14px; }
+  .bias-bar-wrap:last-child { margin-bottom: 0; }
+  .bias-bar-label {
+    display: flex; justify-content: space-between;
+    font-size: 12px; color: var(--text2);
+    margin-bottom: 7px; font-weight: 500;
+  }
+  .bias-bar-label span:last-child { font-weight: 600; color: var(--text1); }
+  .bias-bar-track {
+    height: 5px; background: var(--surface3);
+    border-radius: 4px; overflow: visible; position: relative;
+  }
+  .bias-bar-fill {
+    height: 100%; border-radius: 4px;
+    position: relative; transition: width 0.8s cubic-bezier(0.22,1,0.36,1);
+  }
+  .bias-bar-fill::after {
+    content: ''; position: absolute; right: -1px; top: 50%;
+    transform: translateY(-50%);
+    width: 9px; height: 9px;
+    border-radius: 50%; background: inherit;
+    box-shadow: 0 0 8px currentColor;
+  }
+
+  /* ── CHIPS ── */
+  .chips { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .chip {
+    padding: 7px 14px; border-radius: 20px;
+    border: 1px solid var(--border);
+    font-size: 12px; font-weight: 500; cursor: pointer;
+    color: var(--text2); background: var(--surface2);
+    transition: all 0.2s; font-family: var(--font);
+  }
+  .chip:hover { border-color: var(--border2); color: var(--text1); }
+  .chip.active {
+    background: rgba(124,92,252,0.15);
+    border-color: var(--accent);
+    color: var(--accent2);
+  }
+
+  /* ── TAGS ── */
+  .tag-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+  .tag {
+    padding: 6px 13px; border-radius: 20px;
+    border: 1px solid var(--border);
+    font-size: 12px; font-weight: 500; color: var(--text3);
+    cursor: pointer; transition: all 0.2s; background: var(--surface2);
+  }
+  .tag.selected {
+    background: rgba(124,92,252,0.15);
+    border-color: var(--accent);
+    color: var(--accent2);
+  }
+
+  /* ── DIVIDER ── */
+  .divider {
+    display: flex; align-items: center; gap: 12px;
+    margin: 20px 0; color: var(--text3); font-size: 12px;
+  }
+  .divider::before, .divider::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+  /* ── HISTORY ── */
+  .history-item {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 0; border-bottom: 1px solid var(--border);
+    cursor: pointer; transition: padding 0.2s;
+  }
+  .history-item:last-child { border-bottom: none; }
+  .history-item:hover { padding-left: 4px; }
+  .history-icon {
+    width: 40px; height: 40px; border-radius: 11px;
+    background: var(--surface2); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .history-icon svg { width: 17px; height: 17px; stroke: var(--text2); }
+  .history-meta { flex: 1; }
+  .history-title { font-size: 13px; font-weight: 500; color: var(--text1); margin-bottom: 4px; }
+  .history-date { font-size: 11px; color: var(--text3); display: flex; align-items: center; gap: 6px; }
+  .history-chevron { color: var(--text3); opacity: 0.5; }
+
+  /* ── LEADERBOARD ── */
+  .lb-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 13px 0; border-bottom: 1px solid var(--border);
+    transition: padding 0.2s; cursor: default;
+  }
+  .lb-row:last-child { border-bottom: none; }
+  .lb-rank { width: 24px; font-size: 12px; font-weight: 700; color: var(--text3); text-align: center; flex-shrink: 0; }
+  .lb-rank.gold { color: #f59e0b; }
+  .lb-rank.silver { color: #94a3b8; }
+  .lb-rank.bronze { color: #cd7c4a; }
+  .lb-avatar {
+    width: 38px; height: 38px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; flex-shrink: 0;
+    border: 1px solid var(--border);
+  }
+  .lb-info { flex: 1; }
+  .lb-name { font-size: 13px; font-weight: 600; color: var(--text1); }
+  .lb-sub { font-size: 11px; color: var(--text3); margin-top: 1px; }
+  .lb-score { font-size: 13px; font-weight: 700; color: var(--accent2); font-family: var(--mono); }
+
+  /* ── PROMPT OUTPUT ── */
+  .prompt-output {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--r-md); padding: 14px 16px;
+    font-size: 13px; color: var(--text2); line-height: 1.7;
+    font-family: var(--mono); margin-top: 10px;
+  }
+
+  /* ── GAUGE ── */
+  .gauge-wrap { display: flex; flex-direction: column; align-items: center; padding: 6px 0 20px; }
+  .gauge-number { font-size: 52px; font-weight: 700; color: var(--text1); line-height: 1; letter-spacing: -3px; margin-top: -8px; }
+  .gauge-label { font-size: 12px; color: var(--green); font-weight: 600; margin-top: 6px; letter-spacing: 0.5px; }
+  .gauge-sub { font-size: 11px; color: var(--text3); margin-top: 4px; }
+
+  /* ── SPINNER ── */
+  .spinner {
+    width: 18px; height: 18px;
+    border: 2px solid rgba(255,255,255,0.2);
+    border-top-color: white; border-radius: 50%;
+    animation: spin 0.65s linear infinite;
+    display: inline-block; vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── SIGN IN SCREEN ── */
+  .signin-hero {
+    text-align: center; margin-bottom: 36px;
+  }
+  .signin-icon {
+    width: 64px; height: 64px;
+    background: linear-gradient(135deg, var(--accent), #a78bfa);
+    border-radius: 20px;
+    display: inline-flex; align-items: center; justify-content: center;
+    box-shadow: 0 8px 32px var(--accent-glow);
+    margin-bottom: 18px;
+  }
+  .signin-icon svg { width: 32px; height: 32px; }
+  .signin-title { font-size: 26px; font-weight: 700; color: var(--text1); letter-spacing: -0.8px; }
+  .signin-sub { font-size: 13px; color: var(--text2); margin-top: 6px; line-height: 1.5; }
+
+  /* Glassy pill tag */
+  .pill-tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 12px 5px 8px;
+    border: 1px solid rgba(124,92,252,0.3);
+    border-radius: 20px;
+    background: rgba(124,92,252,0.1);
+    font-size: 11px; font-weight: 600; color: var(--accent2);
+    margin-bottom: 16px; letter-spacing: 0.3px;
+  }
+  .pill-tag-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  /* ── QUICK ACTIONS ── */
+  .quick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+  .quick-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: 16px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s, transform 0.15s;
+  }
+  .quick-card:hover { border-color: rgba(124,92,252,0.4); background: var(--surface2); transform: translateY(-2px); }
+  .quick-card:active { transform: translateY(0); }
+  .quick-emoji { font-size: 22px; margin-bottom: 10px; display: block; }
+  .quick-title { font-size: 13px; font-weight: 600; color: var(--text1); margin-bottom: 3px; }
+  .quick-sub { font-size: 11px; color: var(--text3); }
+
+  /* ── SELF-CARD ── */
+  .self-card {
+    background: linear-gradient(135deg, rgba(124,92,252,0.12), rgba(124,92,252,0.05));
+    border: 1px solid rgba(124,92,252,0.3);
+    border-radius: var(--r-lg);
+    padding: 16px 18px;
+    margin-bottom: 16px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .self-avatar {
+    width: 46px; height: 46px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), #a78bfa);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 700; color: white; flex-shrink: 0;
+    box-shadow: 0 4px 16px var(--accent-glow);
+  }
+
+  /* ── ANALYSIS CARD ── */
+  .analysis-item { margin-bottom: 12px; }
+  .analysis-label { font-size: 12px; font-weight: 600; color: var(--text1); margin-bottom: 4px; }
+  .analysis-text { font-size: 12px; color: var(--text2); line-height: 1.7; }
+
+  /* ── FORGOT ── */
+  .forgot-link { text-align: right; font-size: 12px; color: var(--accent2); margin-bottom: 20px; cursor: pointer; }
+
+  /* ── SIGN-IN FOOTER ── */
+  .signin-footer { text-align: center; font-size: 12px; color: var(--text3); margin-top: 22px; }
+  .signin-footer span { color: var(--accent2); cursor: pointer; font-weight: 600; }
+
+  /* ── GOOGLE BTN ── */
+  .btn-google {
+    width: 100%; padding: 13px;
+    background: var(--surface2); color: var(--text2);
+    border: 1px solid var(--border2);
+    border-radius: var(--r-lg);
+    font-size: 14px; font-weight: 500; font-family: var(--font);
+    cursor: pointer; transition: background 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    margin-top: 10px;
+  }
+  .btn-google:hover { background: var(--surface3); color: var(--text1); }
+
+  /* ── TERMS ── */
+  .terms-text { font-size: 11px; color: var(--text3); text-align: center; margin-top: 16px; line-height: 1.7; }
+  .terms-text span { color: var(--accent2); cursor: pointer; }
+
+  /* ── NOTIFICATION DOT ── */
+  .notif-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--red); position: absolute; top: -1px; right: -1px;
+  }
+
+  /* Score ring */
+  .ring-container { position: relative; display: flex; align-items: center; justify-content: center; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ═══════════════════════════════════════
+       SCREEN: Sign In
+  ═══════════════════════════════════════ -->
+  <div class="screen active" id="screen-signin">
+    <div class="content" style="display:flex;flex-direction:column;justify-content:center;min-height:760px;">
+
+      <div class="signin-hero">
+        <div class="signin-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+          </svg>
+        </div>
+        <div class="signin-title">Unbiased AI</div>
+        <div class="signin-sub">Detect hidden discrimination<br>in AI systems — in real time.</div>
+      </div>
+
+      <div class="input-group">
+        <label>Email</label>
+        <input type="email" placeholder="you@example.com" id="login-email"/>
+      </div>
+      <div class="input-group">
+        <label>Password</label>
+        <input type="password" placeholder="••••••••" id="login-pass"/>
+      </div>
+      <div class="forgot-link">Forgot password?</div>
+
+      <button class="btn-primary" onclick="doLogin()">Sign in</button>
+
+      <div class="divider">or</div>
+
+      <button class="btn-google" onclick="doLogin()">
+        <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+        Continue with Google
+      </button>
+
+      <div class="signin-footer">
+        No account? <span onclick="goScreen('screen-signup')">Create one</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       SCREEN: Sign Up
+  ═══════════════════════════════════════ -->
+  <div class="screen" id="screen-signup">
+    <div class="topbar">
+      <button onclick="goScreen('screen-signin')" style="background:none;border:none;cursor:pointer;color:var(--text2);display:flex;align-items:center;gap:6px;font-size:13px;font-family:var(--font);">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7"/></svg> Back
+      </button>
+      <span class="topbar-title">Create account</span>
+      <span></span>
+    </div>
+    <div class="content">
+      <div class="input-group"><label>Full name</label><input type="text" placeholder="Ada Okonkwo"/></div>
+      <div class="input-group"><label>Email</label><input type="email" placeholder="you@example.com"/></div>
+      <div class="input-group"><label>Password</label><input type="password" placeholder="Min. 8 characters"/></div>
+      <div class="input-group">
+        <label>I am a</label>
+        <select>
+          <option>Researcher / Academic</option>
+          <option>Engineer / Developer</option>
+          <option>Policy Analyst</option>
+          <option>Student</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <button class="btn-primary" onclick="doLogin()" style="margin-top:10px;">Create account</button>
+      <p class="terms-text">By signing up you agree to our <span>Terms of Service</span> and <span>Privacy Policy</span>.</p>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       SCREEN: Dashboard
+  ═══════════════════════════════════════ -->
+  <div class="screen" id="screen-dashboard">
+    <div class="topbar">
+      <div class="logo-wrap">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+          </svg>
+        </div>
+        <span class="logo-name">Unbiased AI</span>
+      </div>
+      <div style="position:relative;">
+        <div class="avatar">A</div>
+        <div class="notif-dot"></div>
+      </div>
+    </div>
+
+    <div class="content">
+      <!-- Greeting -->
+      <div style="margin-bottom:20px;">
+        <div class="pill-tag"><span class="pill-tag-dot"></span> Monitoring active</div>
+        <div style="font-size:22px;font-weight:700;color:var(--text1);letter-spacing:-0.6px;line-height:1.2;">Good morning,<br>Ada 👋</div>
+        <div style="font-size:13px;color:var(--text2);margin-top:5px;">Here's your bias audit overview.</div>
+      </div>
+
+      <!-- Score Gauge Card -->
+      <div class="card" style="margin-bottom:16px;background:linear-gradient(135deg,rgba(124,92,252,0.08),rgba(124,92,252,0.02));border-color:rgba(124,92,252,0.2);">
+        <div class="gauge-wrap">
+          <div class="ring-container">
+            <svg width="140" height="78" viewBox="0 0 140 78">
+              <path d="M14 70 A56 56 0 0 1 126 70" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="8" stroke-linecap="round"/>
+              <path d="M14 70 A56 56 0 0 1 126 70" fill="none" stroke="url(#gaugeGrad)" stroke-width="8" stroke-linecap="round"
+                stroke-dasharray="176" stroke-dashoffset="152"/>
+              <defs>
+                <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#22d3a5"/>
+                  <stop offset="100%" stop-color="#4ade80"/>
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+          <div class="gauge-number">12</div>
+          <div class="gauge-label">✓ LOW RISK</div>
+          <div class="gauge-sub">Overall bias score across 4 domains</div>
+        </div>
+      </div>
+
+      <!-- Metrics -->
+      <div class="metric-row">
+        <div class="metric-card">
+          <div class="metric-label">Audits run</div>
+          <div class="metric-value">34</div>
+          <div class="metric-sub">this month</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Avg score</div>
+          <div class="metric-value">18</div>
+          <div class="metric-sub">across all scans</div>
+        </div>
+      </div>
+
+      <!-- Bias bars -->
+      <div class="section-title">Bias by domain</div>
+      <div class="card">
+        <div class="bias-bar-wrap">
+          <div class="bias-bar-label"><span>Job Hiring</span><span style="color:var(--red);">47</span></div>
+          <div class="bias-bar-track"><div class="bias-bar-fill" style="width:47%;background:var(--red);"></div></div>
+        </div>
+        <div class="bias-bar-wrap">
+          <div class="bias-bar-label"><span>Loan Approval</span><span style="color:var(--amber);">31</span></div>
+          <div class="bias-bar-track"><div class="bias-bar-fill" style="width:31%;background:var(--amber);"></div></div>
+        </div>
+        <div class="bias-bar-wrap">
+          <div class="bias-bar-label"><span>Medical Care</span><span style="color:var(--green);">12</span></div>
+          <div class="bias-bar-track"><div class="bias-bar-fill" style="width:12%;background:var(--green);"></div></div>
+        </div>
+        <div class="bias-bar-wrap">
+          <div class="bias-bar-label"><span>Criminal Justice</span><span style="color:var(--amber);">28</span></div>
+          <div class="bias-bar-track"><div class="bias-bar-fill" style="width:28%;background:var(--amber);"></div></div>
+        </div>
+      </div>
+
+      <!-- Quick actions -->
+      <div class="section-title">Quick actions</div>
+      <div class="quick-actions">
+        <div class="quick-card" onclick="goTo('scan')">
+          <span class="quick-emoji">🎯</span>
+          <div class="quick-title">Run Audit</div>
+          <div class="quick-sub">Test a scenario</div>
+        </div>
+        <div class="quick-card" onclick="goTo('prompt')">
+          <span class="quick-emoji">⚡</span>
+          <div class="quick-title">Prompt Test</div>
+          <div class="quick-sub">Live AI analysis</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bottomnav">
+      <button class="nav-item active" onclick="goTo('dashboard')">
+        <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        Home
+      </button>
+      <button class="nav-item" onclick="goTo('scan')">
+        <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        Scan
+      </button>
+      <button class="nav-item" onclick="goTo('prompt')">
+        <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        Prompt
+      </button>
+      <button class="nav-item" onclick="goTo('history')">
+        <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        History
+      </button>
+      <button class="nav-item" onclick="goTo('leaderboard')">
+        <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M8 17v-5M12 17V7M16 17v-3"/></svg>
+        Ranks
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       SCREEN: Bias Audit / Scan
+  ═══════════════════════════════════════ -->
+  <div class="screen" id="screen-scan">
+    <div class="topbar">
+      <span class="topbar-title">Bias Audit</span>
+      <span class="topbar-action">Reports</span>
+    </div>
+    <div class="content">
+
+      <div class="section-title">Select domain</div>
+      <div class="chips" id="domain-chips">
+        <button class="chip active" onclick="selectChip(this)">Job Hiring</button>
+        <button class="chip" onclick="selectChip(this)">Loan Approval</button>
+        <button class="chip" onclick="selectChip(this)">Medical Care</button>
+        <button class="chip" onclick="selectChip(this)">Criminal Justice</button>
+      </div>
+
+      <div class="section-title">Protected attributes</div>
+      <div class="tag-row" id="attr-tags">
+        <span class="tag selected" onclick="toggleTag(this)">Gender</span>
+        <span class="tag selected" onclick="toggleTag(this)">Race / Ethnicity</span>
+        <span class="tag" onclick="toggleTag(this)">Age</span>
+        <span class="tag" onclick="toggleTag(this)">Disability</span>
+        <span class="tag" onclick="toggleTag(this)">Religion</span>
+        <span class="tag" onclick="toggleTag(this)">Nationality</span>
+      </div>
+
+      <div class="input-group">
+        <label>Describe your AI system</label>
+        <textarea placeholder="e.g. A resume screening model trained on 10 years of hiring data at a Fortune 500 company..."></textarea>
+      </div>
+
+      <button class="btn-primary" id="audit-btn" onclick="runAudit()">
+        <span id="audit-btn-text">Run Bias Audit</span>
+      </button>
+
+      <div id="audit-results" style="display:none;margin-top:22px;">
+        <div class="section-title">Audit results</div>
+        <div class="card" style="border-color:rgba(244,63,94,0.2);background:rgba(244,63,94,0.04);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <div style="font-size:14px;font-weight:600;color:var(--text1);">Job Hiring</div>
+            <span class="badge badge-high">High Risk — 47</span>
+          </div>
+          <div class="bias-bar-wrap">
+            <div class="bias-bar-label"><span>Gender bias</span><span style="color:var(--red);">52%</span></div>
+            <div class="bias-bar-track"><div class="bias-bar-fill" style="width:52%;background:var(--red);"></div></div>
+          </div>
+          <div class="bias-bar-wrap" style="margin-bottom:14px;">
+            <div class="bias-bar-label"><span>Racial bias</span><span style="color:var(--amber);">41%</span></div>
+            <div class="bias-bar-track"><div class="bias-bar-fill" style="width:41%;background:var(--amber);"></div></div>
+          </div>
+          <div style="font-size:12px;color:var(--text2);line-height:1.7;padding-top:2px;border-top:1px solid var(--border);">
+            The model shows statistically significant disparity in callback rates — women receive 23% fewer callbacks than men with identical qualifications. Recommend rebalancing training data and applying fairness constraints.
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="font-size:13px;font-weight:600;color:var(--text1);margin-bottom:12px;">Recommended mitigations</div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div style="display:flex;gap:10px;align-items:flex-start;">
+              <div style="width:22px;height:22px;border-radius:6px;background:rgba(124,92,252,0.15);border:1px solid rgba(124,92,252,0.3);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;font-weight:700;color:var(--accent2);margin-top:1px;">1</div>
+              <div style="font-size:12px;color:var(--text2);line-height:1.6;">Apply re-weighting to underrepresented groups in training data</div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start;">
+              <div style="width:22px;height:22px;border-radius:6px;background:rgba(124,92,252,0.15);border:1px solid rgba(124,92,252,0.3);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;font-weight:700;color:var(--accent2);margin-top:1px;">2</div>
+              <div style="font-size:12px;color:var(--text2);line-height:1.6;">Use adversarial debiasing during fine-tuning</div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start;">
+              <div style="width:22px;height:22px;border-radius:6px;background:rgba(124,92,252,0.15);border:1px solid rgba(124,92,252,0.3);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;font-weight:700;color:var(--accent2);margin-top:1px;">3</div>
+              <div style="font-size:12px;color:var(--text2);line-height:1.6;">Add equalized odds post-processing constraint</div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start;">
+              <div style="width:22px;height:22px;border-radius:6px;background:rgba(124,92,252,0.15);border:1px solid rgba(124,92,252,0.3);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;font-weight:700;color:var(--accent2);margin-top:1px;">4</div>
+              <div style="font-size:12px;color:var(--text2);line-height:1.6;">Conduct regular fairness audits quarterly</div>
+            </div>
+          </div>
+        </div>
+        <button class="btn-secondary" style="margin-top:2px;">Export report ↗</button>
+      </div>
+    </div>
+
+    <div class="bottomnav">
+      <button class="nav-item" onclick="goTo('dashboard')"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Home</button>
+      <button class="nav-item active" onclick="goTo('scan')"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>Scan</button>
+      <button class="nav-item" onclick="goTo('prompt')"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>Prompt</button>
+      <button class="nav-item" onclick="goTo('history')"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>History</button>
+      <button class="nav-item" onclick="goTo('leaderboard')"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M8 17v-5M12 17V7M16 17v-3"/></svg>Ranks</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       SCREEN: Prompt Tester
+  ═══════════════════════════════════════ -->
+  <div class="screen" id="screen-prompt">
+    <div class="topbar">
+      <span class="topbar-title">Prompt Tester</span>
+      <span class="pill-tag" style="margin-bottom:0;font-size:10px;padding:3px 9px 3px 7px;"><span class="pill-tag-dot"></span> Real-time</span>
+    </div>
+    <div class="content">
+      <div style="font-size:13px;color:var(--text2);margin-bottom:18px;line-height:1.7;">Enter a prompt you'd send to an AI system. We'll analyze it for embedded bias patterns.</div>
+
+      <div class="input-group">
+        <label>Your prompt</label>
+        <textarea id="prompt-input" style="min-height:100px;" placeholder="e.g. Write a job description for a software engineer. We prefer candidates who are..." onchange="clearPromptOutput()"></textarea>
+      </div>
+
+      <div class="section-title">Target model</div>
+      <div class="chips" id="model-chips">
+        <button class="chip active" onclick="selectChip(this)">GPT-4o</button>
+        <button class="chip" onclick="selectChip(this)">Gemini 1.5</button>
+        <button class="chip" onclick="selectChip(this)">Claude 3</button>
+        <button class="chip" onclick="selectChip(this)">LLaMA 3</button>
+      </div>
+
+      <button class="btn-primary" id="prompt-btn" onclick="runPromptTest()" style="margin-bottom:14px;">
+        <span id="prompt-btn-text">Analyze Prompt</span>
+      </button>
+
+      <div id="prompt-output-wrap" style="display:none;">
+        <div class="section-title">Bias analysis</div>
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+            <div style="font-size:13px;font-weight:600;color:var(--text1);">Detected issues</div>
+            <span class="badge badge-med">Moderate — 34</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            <div class="analysis-item">
+              <div class="analysis-label">⚠ Age bias</div>
+              <div class="analysis-text">"prefer candidates who are" can implicitly encode age preferences.</div>
+            </div>
+            <div class="analysis-item">
+              <div class="analysis-label">⚠ Gender signaling</div>
+              <div class="analysis-text">Language patterns in this phrasing attract 68% more male applicants statistically.</div>
+            </div>
+            <div class="analysis-item" style="padding-top:12px;border-top:1px solid var(--border);">
+              <div class="analysis-label" style="color:var(--green);">✓ Suggestion</div>
+              <div class="analysis-text">Replace with "We welcome applications from all qualified candidates regardless of background."</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-title">Suggested rewrite</div>
+        <div class="prompt-output">Write a job description for a software engineer. We welcome applications from all qualified candidates and are committed to building a diverse team.</div>
+        <button class="btn-secondary" style="margin-top:12px;">More suggestions ↗</button>
+      </div>
+    </div>
+
+    <div class="bottomnav">
+      <button class="nav-item" onclick="goTo('dashboard')"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Home</button>
+      <button class="nav-item" onclick="goTo('scan')"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>Scan</button>
+      <button class="nav-item active" onclick="goTo('prompt')"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>Prompt</button>
+      <button class="nav-item" onclick="goTo('history')"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>History</button>
+      <button class="nav-item" onclick="goTo('leaderboard')"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M8 17v-5M12 17V7M16 17v-3"/></svg>Ranks</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       SCREEN: History
+  ═══════════════════════════════════════ -->
+  <div class="screen" id="screen-history">
+    <div class="topbar">
+      <span class="topbar-title">Audit History</span>
+      <span class="topbar-action">Filter</span>
+    </div>
+    <div class="content">
+      <div class="chips">
+        <button class="chip active" onclick="selectChip(this)">All</button>
+        <button class="chip" onclick="selectChip(this)">High Risk</button>
+        <button class="chip" onclick="selectChip(this)">Moderate</button>
+        <button class="chip" onclick="selectChip(this)">Low Risk</button>
+      </div>
+
+      <div class="history-item">
+        <div class="history-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></div>
+        <div class="history-meta">
+          <div class="history-title">Job Hiring — Resume Screener</div>
+          <div class="history-date">Today, 09:41 AM <span class="badge badge-high" style="font-size:10px;padding:3px 8px;">High — 47</span></div>
+        </div>
+        <svg class="history-chevron" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+
+      <div class="history-item">
+        <div class="history-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+        <div class="history-meta">
+          <div class="history-title">Loan Approval — Mortgage Model</div>
+          <div class="history-date">Yesterday <span class="badge badge-med" style="font-size:10px;padding:3px 8px;">Moderate — 31</span></div>
+        </div>
+        <svg class="history-chevron" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+
+      <div class="history-item">
+        <div class="history-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
+        <div class="history-meta">
+          <div class="history-title">Medical Care — Triage System</div>
+          <div class="history-date">Apr 26 <span class="badge badge-low" style="font-size:10px;padding:3px 8px;">Low — 12</span></div>
+        </div>
+        <svg class="history-chevron" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+
+      <div class="history-item">
+        <div class="history-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+        <div class="history-meta">
+          <div class="history-title">Criminal Justice — Bail Predictor</div>
+          <div class="history-date">Apr 25 <span class="badge badge-med" style="font-size:10px;padding:3px 8px;">Moderate — 28</span></div>
+        </div>
+        <svg class="history-chevron" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+
+      <div class="history-item">
+        <div class="history-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
+        <div class="history-meta">
+          <div class="history-title">Prompt Test — HR Chatbot</div>
+          <div class="history-date">Apr 24 <span class="badge badge-low" style="font-size:10px;padding:3px 8px;">Low — 9</span></div>
+        </div>
+        <svg class="history-chevron" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+
+      <div class="history-item">
+        <div class="history-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></div>
+        <div class="history-meta">
+          <div class="history-title">Job Hiring — LinkedIn Ranker</div>
+          <div class="history-date">Apr 22 <span class="badge badge-high" style="font-size:10px;padding:3px 8px;">High — 53</span></div>
+        </div>
+        <svg class="history-chevron" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+    </div>
+
+    <div class="bottomnav">
+      <button class="nav-item" onclick="goTo('dashboard')"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Home</button>
+      <button class="nav-item" onclick="goTo('scan')"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>Scan</button>
+      <button class="nav-item" onclick="goTo('prompt')"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>Prompt</button>
+      <button class="nav-item active" onclick="goTo('history')"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>History</button>
+      <button class="nav-item" onclick="goTo('leaderboard')"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M8 17v-5M12 17V7M16 17v-3"/></svg>Ranks</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       SCREEN: Leaderboard
+  ═══════════════════════════════════════ -->
+  <div class="screen" id="screen-leaderboard">
+    <div class="topbar">
+      <span class="topbar-title">Community Ranks</span>
+      <span style="font-size:12px;color:var(--accent2);font-weight:500;">April 2025</span>
+    </div>
+    <div class="content">
+      <div style="font-size:13px;color:var(--text2);margin-bottom:18px;line-height:1.6;">Researchers ranked by audits completed and bias fixes applied this month.</div>
+
+      <!-- Your card -->
+      <div class="self-card">
+        <div class="self-avatar">A</div>
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:700;color:var(--text1);">Ada Okonkwo</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:2px;">34 audits · 12 fixes applied</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:22px;font-weight:700;color:var(--accent2);letter-spacing:-1px;">#7</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:1px;">your rank</div>
+        </div>
+      </div>
+
+      <div class="section-title">Top researchers</div>
+
+      <div class="lb-row">
+        <div class="lb-rank gold">🥇</div>
+        <div class="lb-avatar" style="background:rgba(245,158,11,0.12);color:#f59e0b;">RK</div>
+        <div class="lb-info"><div class="lb-name">Riya Kapoor</div><div class="lb-sub">89 audits · MIT</div></div>
+        <div class="lb-score">2,340</div>
+      </div>
+      <div class="lb-row">
+        <div class="lb-rank silver">🥈</div>
+        <div class="lb-avatar" style="background:rgba(34,211,165,0.1);color:var(--green);">JO</div>
+        <div class="lb-info"><div class="lb-name">James Osei</div><div class="lb-sub">74 audits · Oxford</div></div>
+        <div class="lb-score">1,980</div>
+      </div>
+      <div class="lb-row">
+        <div class="lb-rank bronze">🥉</div>
+        <div class="lb-avatar" style="background:rgba(244,63,94,0.1);color:var(--red);">SL</div>
+        <div class="lb-info"><div class="lb-name">Sofia Leal</div><div class="lb-sub">61 audits · USP</div></div>
+        <div class="lb-score">1,740</div>
+      </div>
+      <div class="lb-row">
+        <div class="lb-rank" style="font-size:11px;color:var(--text3);">4</div>
+        <div class="lb-avatar" style="background:rgba(99,102,241,0.12);color:#818cf8;">MK</div>
+        <div class="lb-info"><div class="lb-name">Mihail Kovac</div><div class="lb-sub">55 audits · ETH Zurich</div></div>
+        <div class="lb-score">1,520</div>
+      </div>
+      <div class="lb-row">
+        <div class="lb-rank" style="font-size:11px;color:var(--text3);">5</div>
+        <div class="lb-avatar" style="background:rgba(167,139,250,0.12);color:var(--accent2);">AN</div>
+        <div class="lb-info"><div class="lb-name">Aiko Nakamura</div><div class="lb-sub">48 audits · Keio</div></div>
+        <div class="lb-score">1,290</div>
+      </div>
+      <div class="lb-row">
+        <div class="lb-rank" style="font-size:11px;color:var(--text3);">6</div>
+        <div class="lb-avatar" style="background:rgba(34,211,165,0.08);color:var(--green);">BT</div>
+        <div class="lb-info"><div class="lb-name">Bilal Tariq</div><div class="lb-sub">42 audits · LUMS</div></div>
+        <div class="lb-score">1,100</div>
+      </div>
+    </div>
+
+    <div class="bottomnav">
+      <button class="nav-item" onclick="goTo('dashboard')"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Home</button>
+      <button class="nav-item" onclick="goTo('scan')"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>Scan</button>
+      <button class="nav-item" onclick="goTo('prompt')"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>Prompt</button>
+      <button class="nav-item" onclick="goTo('history')"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>History</button>
+      <button class="nav-item active" onclick="goTo('leaderboard')"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M8 17v-5M12 17V7M16 17v-3"/></svg>Ranks</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const screens = {
+  signin: 'screen-signin', signup: 'screen-signup',
+  dashboard: 'screen-dashboard', scan: 'screen-scan',
+  prompt: 'screen-prompt', history: 'screen-history', leaderboard: 'screen-leaderboard'
+};
+
+function goScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById(id);
+  el.classList.add('active');
+}
+
+function goTo(name) { goScreen(screens[name]); }
+
+function doLogin() { goTo('dashboard'); }
+
+function selectChip(el) {
+  el.closest('.chips').querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function toggleTag(el) { el.classList.toggle('selected'); }
+
+function runAudit() {
+  const btn = document.getElementById('audit-btn');
+  const txt = document.getElementById('audit-btn-text');
+  btn.disabled = true;
+  txt.innerHTML = '<span class="spinner"></span>';
+  setTimeout(() => {
+    btn.disabled = false;
+    txt.textContent = 'Run Bias Audit';
+    const res = document.getElementById('audit-results');
+    res.style.display = 'block';
+    res.style.animation = 'slideUp 0.3s cubic-bezier(0.22,1,0.36,1)';
+  }, 1800);
+}
+
+function runPromptTest() {
+  const btn = document.getElementById('prompt-btn');
+  const txt = document.getElementById('prompt-btn-text');
+  btn.disabled = true;
+  txt.innerHTML = '<span class="spinner"></span>';
+  setTimeout(() => {
+    btn.disabled = false;
+    txt.textContent = 'Analyze Prompt';
+    const out = document.getElementById('prompt-output-wrap');
+    out.style.display = 'block';
+    out.style.animation = 'slideUp 0.3s cubic-bezier(0.22,1,0.36,1)';
+  }, 1600);
+}
+
+function clearPromptOutput() {
+  document.getElementById('prompt-output-wrap').style.display = 'none';
+}
+</script>
+</body>
+</html>
